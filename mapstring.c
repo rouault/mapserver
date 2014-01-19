@@ -1288,26 +1288,170 @@ void msDecodeHTMLEntities(const char *string)
   return;
 }
 
+
+/************************************************************************/
+/*                             utf8decode()                             */
+/************************************************************************/
+
+/*
+    Decode a single UTF-8 encoded character starting at \e p. The
+    resulting Unicode value (in the range 0-0x10ffff) is returned,
+    and \e len is set the the number of bytes in the UTF-8 encoding
+    (adding \e len to \e p will point at the next character).
+
+    If \a p points at an illegal UTF-8 encoding, including one that
+    would go past \e end, or where a code is uses more bytes than
+    necessary, then *(unsigned char*)p is translated as though it is
+    in the Microsoft CP1252 character set and \e len is set to 1.
+    Treating errors this way allows this to decode almost any
+    ISO-8859-1 or CP1252 text that has been mistakenly placed where
+    UTF-8 is expected, and has proven very useful.
+
+    If you want errors to be converted to error characters (as the
+    standards recommend), adding a test to see if the length is
+    unexpectedly 1 will work:
+
+\code
+    if (*p & 0x80) { // what should be a multibyte encoding
+      code = utf8decode(p,end,&len);
+      if (len<2) code = 0xFFFD; // Turn errors into REPLACEMENT CHARACTER
+    } else { // handle the 1-byte utf8 encoding:
+      code = *p;
+      len = 1;
+    }
+\endcode
+
+    Direct testing for the 1-byte case (as shown above) will also
+    speed up the scanning of strings where the majority of characters
+    are ASCII.
+*/
+static unsigned utf8decode(const char* p, const char* end, int* len)
+{
+  unsigned char c = *(unsigned char*)p;
+  if (c < 0x80) {
+    *len = 1;
+    return c;
+#if ERRORS_TO_CP1252
+  } else if (c < 0xa0) {
+    *len = 1;
+    return cp1252[c-0x80];
+#endif
+  } else if (c < 0xc2) {
+    goto FAIL;
+  }
+  if (p+1 >= end || (p[1]&0xc0) != 0x80) goto FAIL;
+  if (c < 0xe0) {
+    *len = 2;
+    return
+      ((p[0] & 0x1f) << 6) +
+      ((p[1] & 0x3f));
+  } else if (c == 0xe0) {
+    if (((unsigned char*)p)[1] < 0xa0) goto FAIL;
+    goto UTF8_3;
+#if STRICT_RFC3629
+  } else if (c == 0xed) {
+    // RFC 3629 says surrogate chars are illegal.
+    if (((unsigned char*)p)[1] >= 0xa0) goto FAIL;
+    goto UTF8_3;
+  } else if (c == 0xef) {
+    // 0xfffe and 0xffff are also illegal characters
+    if (((unsigned char*)p)[1]==0xbf &&
+    ((unsigned char*)p)[2]>=0xbe) goto FAIL;
+    goto UTF8_3;
+#endif
+  } else if (c < 0xf0) {
+  UTF8_3:
+    if (p+2 >= end || (p[2]&0xc0) != 0x80) goto FAIL;
+    *len = 3;
+    return
+      ((p[0] & 0x0f) << 12) +
+      ((p[1] & 0x3f) << 6) +
+      ((p[2] & 0x3f));
+  } else if (c == 0xf0) {
+    if (((unsigned char*)p)[1] < 0x90) goto FAIL;
+    goto UTF8_4;
+  } else if (c < 0xf4) {
+  UTF8_4:
+    if (p+3 >= end || (p[2]&0xc0) != 0x80 || (p[3]&0xc0) != 0x80) goto FAIL;
+    *len = 4;
+#if STRICT_RFC3629
+    // RFC 3629 says all codes ending in fffe or ffff are illegal:
+    if ((p[1]&0xf)==0xf &&
+    ((unsigned char*)p)[2] == 0xbf &&
+    ((unsigned char*)p)[3] >= 0xbe) goto FAIL;
+#endif
+    return
+      ((p[0] & 0x07) << 18) +
+      ((p[1] & 0x3f) << 12) +
+      ((p[2] & 0x3f) << 6) +
+      ((p[3] & 0x3f));
+  } else if (c == 0xf4) {
+    if (((unsigned char*)p)[1] > 0x8f) goto FAIL; // after 0x10ffff
+    goto UTF8_4;
+  } else {
+  FAIL:
+    *len = 1;
+#if ERRORS_TO_ISO8859_1
+    return c;
+#else
+    return 0xfffd; // Unicode REPLACEMENT CHARACTER
+#endif
+  }
+}
+
+static int msIsXMLValidStartChar(unsigned int unicode)
+{
+    return ( unicode == ':' ||
+      (unicode >= 'A' && unicode <= 'Z') ||
+      unicode == '_' ||
+      (unicode >= 'a' && unicode <= 'z') ||
+      (unicode >= 0xC0 && unicode <= 0xD6) ||
+      (unicode >= 0xD8 && unicode <= 0xF6) ||
+      (unicode >= 0xF8 && unicode <= 0x2FF) ||
+      (unicode >= 0x370 && unicode <= 0x37D) ||
+      (unicode >= 0x37F && unicode <= 0x1FFF) ||
+      (unicode >= 0x200C && unicode <= 0x200D) ||
+      (unicode >= 0x2070 && unicode <= 0x218F) ||
+      (unicode >= 0x2C00 && unicode <= 0x2FEF) ||
+      (unicode >= 0x3001 && unicode <= 0xD7FF) ||
+      (unicode >= 0xF900 && unicode <= 0xFDCF) ||
+      (unicode >= 0xFDF0 && unicode <= 0xFFFD) ||
+      (unicode >= 0x10000 && unicode <= 0xEFFFF) );
+}
+
 /*
 ** msIsXMLValid
 **
-** Check if the string is an XML valid string. It should contains only
-** A-Z, a-z, 0-9, '_', '-', '.', and ':'
+** Check if the string is an XML valid string. 
+** According to http://www.w3.org/TR/REC-xml/#NT-Name, the rules are :
+** [4]      NameStartChar      ::=      ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+** [4a]    NameChar       ::=      NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+** [5]     Name       ::=      NameStartChar (NameChar)*
 ** Return MS_TRUE or MS_FALSE
 */
 int msIsXMLTagValid(const char *string)
 {
   int i, nLen;
-
+  int nCharLen;
+  unsigned int unicode;
+  const char* stringEnd;
+  
   nLen = strlen(string);
-
-  for(i=0; i<nLen; i++) {
-    if( !( string[i] >= 'A' && string[i] <= 'Z' ) &&
-        !( string[i] >= 'a' && string[i] <= 'z' ) &&
-        !( string[i] >= '0' && string[i] <= '9' ) &&
-        string[i] != '-' && string[i] != '.' &&
-        string[i] != ':' && string[i] != '_' )
+  stringEnd = string + nLen;
+  unicode = utf8decode(string, stringEnd, &nCharLen);
+  if( !msIsXMLValidStartChar(unicode) )
       return MS_FALSE;
+  i = nCharLen;
+  
+  while(i<nLen)
+  {
+      unicode = utf8decode(string + i, stringEnd, &nCharLen);
+      if( !(msIsXMLValidStartChar(unicode) || unicode != '-' || unicode != '.' ||
+            (unicode >= '0' && unicode <= '9') || unicode == 0xB7 ||
+            (unicode >= 0x0300 && unicode <= 0x036F) ||
+            (unicode >= 0x203F && unicode <= 0x2040)) )
+          return MS_FALSE;
+      i += nCharLen;
   }
 
   return MS_TRUE;
