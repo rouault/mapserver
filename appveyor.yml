@@ -23,8 +23,10 @@ build_script:
   - if "%platform%" == "x86" SET SDK=release-1800
   - if "%platform%" == "x64" SET SDK=release-1800-x64
   - echo "%VS_FULL%"
-  - ps: Start-FileDownload http://download.gisinternals.com/sdk/downloads/%SDK%-dev.zip
-  - 7z x %SDK%-dev.zip
+  - set SDK_ZIP=%SDK%-dev.zip
+  - set SDK_URL=http://download.gisinternals.com/sdk/downloads/%SDK_ZIP%
+  - ps: Start-FileDownload %SDK_URL%
+  - 7z x %SDK_ZIP%
   - set SDK_INC=../%SDK%/include
   - set SDK_LIB=../%SDK%/lib
   - mkdir build
