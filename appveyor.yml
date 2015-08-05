@@ -28,9 +28,12 @@ build_script:
   - echo "%SDK_ZIP%"
   - echo "%SDK_URL%"
   - appveyor DownloadFile "%SDK_URL%"
+  - mkdir sdk
+  - cd sdk
   - 7z x "%SDK_ZIP%"
-  - set SDK_INC=../%SDK%/include
-  - set SDK_LIB=../%SDK%/lib
+  - cd ..
+  - set SDK_INC=../sdk/%SDK%/include
+  - set SDK_LIB=../sdk/%SDK%/lib
   - mkdir build
   - cd build
   - cmake -G "%VS_FULL%" .. -DCMAKE_BUILD_TYPE=Release -DFREETYPE_INCLUDE_DIR_freetype2=%SDK_INC%/freetype -DFREETYPE_INCLUDE_DIR_ft2build=%SDK_INC%/freetype -DFREETYPE_LIBRARY=%SDK_LIB%/freetype2411.lib
