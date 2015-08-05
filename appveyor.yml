@@ -32,11 +32,12 @@ build_script:
   - appveyor DownloadFile "%SDK_URL%"
   - 7z x "%SDK_ZIP%"
   - cd ..
+  - set SDK_PREFIX=../sdk/%SDK%
   - set SDK_INC=../sdk/%SDK%/include
   - set SDK_LIB=../sdk/%SDK%/lib
   - mkdir build
   - cd build
-  - cmake -G "%VS_FULL%" .. -DCMAKE_BUILD_TYPE=Release -DFREETYPE_INCLUDE_DIR_freetype2=%SDK_INC%/freetype -DFREETYPE_INCLUDE_DIR_ft2build=%SDK_INC%/freetype -DFREETYPE_LIBRARY=%SDK_LIB%/freetype2411.lib
+  - cmake -G "%VS_FULL%" .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%SDK_PREFIX% -DFREETYPE_INCLUDE_DIR_freetype2=%SDK_INC%/freetype -DFREETYPE_INCLUDE_DIR_ft2build=%SDK_INC%/freetype -DFREETYPE_LIBRARY=%SDK_LIB%/freetype2411.lib
   - cmake --build .. --config Release
 
 test_script:
