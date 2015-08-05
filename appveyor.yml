@@ -2,20 +2,17 @@ platform:
 - x64
 - x86
 
-#environment:
-#  matrix:
+environment:
+  matrix:
 #
 # VS 2010
-#  - BUILD_TYPE: cmake
-#    VS_VERSION: Visual Studio 10
+#  - VS_VERSION: Visual Studio 10
 #
 # VS 2012
-#  - BUILD_TYPE: cmake
-#    VS_VERSION: Visual Studio 11
+#  - VS_VERSION: Visual Studio 11
 #
 # VS 2013
-#  - BUILD_TYPE: cmake
-#    VS_VERSION: Visual Studio 12
+  - VS_VERSION: Visual Studio 12
 
 shallow_clone: true
 
