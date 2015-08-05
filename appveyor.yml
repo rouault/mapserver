@@ -35,6 +35,7 @@ build_script:
   - set SDK_PREFIX=../sdk/%SDK%
   - set SDK_INC=../sdk/%SDK%/include
   - set SDK_LIB=../sdk/%SDK%/lib
+  - copy %SDK_LIB%/libpng.lib %SDK_LIB%/libpng.lib.lib
   - set REGEX_DIR=%CD%/sdk/regex-0.12
   - mkdir build
   - cd build
