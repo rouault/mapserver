@@ -27,9 +27,9 @@ build_script:
   - set SDK_URL=http://download.gisinternals.com/sdk/downloads/%SDK_ZIP%
   - echo "%SDK_ZIP%"
   - echo "%SDK_URL%"
-  - appveyor DownloadFile "%SDK_URL%"
   - mkdir sdk
   - cd sdk
+  - appveyor DownloadFile "%SDK_URL%"
   - 7z x "%SDK_ZIP%"
   - cd ..
   - set SDK_INC=../sdk/%SDK%/include
