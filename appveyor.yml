@@ -31,8 +31,10 @@ build_script:
   - cd sdk
   - appveyor DownloadFile "%SDK_URL%"
   - 7z x "%SDK_ZIP%"
+  - cd %SDK%
   - cd lib
   - copy libpng.lib libpng.lib.lib
+  - cd ..
   - cd ..
   - cd ..
   - set SDK_PREFIX=../sdk/%SDK%
