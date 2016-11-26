@@ -775,5 +775,24 @@ Content-Type: text/xml; charset=UTF-8
         <ms:region>0</ms:region>
       </ms:towns>
     </gml:featureMember>
+    <gml:featureMember>
+      <ms:towns>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:32632">
+        		<gml:coordinates>653901.530000,4866278.050000 653901.530000,4866278.050000</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:msGeometry>
+        <gml:Point srsName="EPSG:32632">
+          <gml:coordinates>653901.530000,4866278.050000</gml:coordinates>
+        </gml:Point>
+        </ms:msGeometry>
+        <ms:name></ms:name>
+        <ms:peoples></ms:peoples>
+        <ms:localcounc></ms:localcounc>
+        <ms:county></ms:county>
+        <ms:region></ms:region>
+      </ms:towns>
+    </gml:featureMember>
 </wfs:FeatureCollection>
 
