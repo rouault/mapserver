@@ -73,6 +73,8 @@ script:
   - sudo apt-get install gdal-bin
   - ogrinfo data/db.sqlite -sql "SELECT name, peoples, localcounc, county, region, geometry FROM towns WHERE ((CAST(name AS text) != 'Fanano'))"
   - ogrinfo data/db.sqlite -sql "SELECT name, peoples, localcounc, county, region, geometry FROM towns WHERE ((CAST(name AS text) != 'Fanano')) AND towns.OGC_FID IN (SELECT ROWID FROM SpatialIndex WHERE f_table_name = 'towns' AND f_geometry_column = 'geometry' AND search_frame = GeomFromText('POLYGON((210590.346760 3318785.352581,1661624.769674 3318785.352581,1661624.769674 5607994.602011,210590.346760 5607994.602011,210590.346760 3318785.352581))'))"
+  - LD_LIBRARY_PATH=../../build PATH=../../build:$PATH python run_test.py wfs_ogr_native_sql.map -v || /bin/true
+  - MS_DEBUGLEVEL=5 MS_ERRORFILE=/dev/stderr LD_LIBRARY_PATH=../../build PATH=../../build:$PATH python run_test.py wfs_ogr_native_sql.map  -v || /bin/true
 
 after_success:
 # Only run coverage when it is safe to do so (not on pull requests), and only on master branch
