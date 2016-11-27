@@ -42,6 +42,7 @@ compiler:
   - clang
 
 before_install:
+  - dpkg -l | grep sqlite3
   - mkdir tmp
   - cd tmp
   - wget http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-0.9.38.tar.bz2
