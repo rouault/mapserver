@@ -68,6 +68,10 @@ before_install:
 
 script:
   - make -j4 test
+  - cd msautotest/wxs
+  - MS_DEBUGLEVEL=5 MS_ERRORFILE=/dev/stderr mapserv QUERY_STRING="map=wfs_ogr_native_sql.map&SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature&TYPENAME=towns&OUTPUTFORMAT=GML2&FILTER=<Filter><PropertyIsNotEqualTo><PropertyName>name</PropertyName><Literal>Fanano</Literal></PropertyIsNotEqualTo></Filter>"
+  - sudo apt-get install gdal-bin
+  - ogrinfo data/db.sqlite -sql "SELECT "name", "peoples", "localcounc", "county", "region", "geometry" FROM "towns" WHERE ((CAST("name" AS text) != 'Fanano'))"
 
 after_success:
 # Only run coverage when it is safe to do so (not on pull requests), and only on master branch
