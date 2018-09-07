@@ -69,7 +69,7 @@ endif()
 add_custom_command(
     TARGET pythonmapscript-wheel POST_BUILD
     WORKING_DIRECTORY ${PYTHON_MAPSCRIPT_WORKING_DIRECTORY}
-    COMMAND ${PYTHON_EXECUTABLE} -m pip install -r ${PROJECT_SOURCE_DIR}/mapscript/python/requirements-dev.txt
+    COMMAND ${PYTHON_EXECUTABLE} -m pip install --user -r ${PROJECT_SOURCE_DIR}/mapscript/python/requirements-dev.txt
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/mapscript/python/mapscript" $<TARGET_FILE_DIR:${SWIG_MODULE_pythonmapscript_REAL_NAME}>/mapscript
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/mapscript.py" $<TARGET_FILE_DIR:${SWIG_MODULE_pythonmapscript_REAL_NAME}>/mapscript/mapscript.py
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${SWIG_MODULE_pythonmapscript_REAL_NAME}>" "$<TARGET_FILE_DIR:${SWIG_MODULE_pythonmapscript_REAL_NAME}>/mapscript/$<TARGET_FILE_NAME:${SWIG_MODULE_pythonmapscript_REAL_NAME}>"
