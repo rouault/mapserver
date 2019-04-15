@@ -4037,9 +4037,14 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
       /*
       ** Do any token caching/tracking here, easier to have it in one place.
       */
-      if(node->token == MS_TOKEN_BINDING_TIME) {
+      if(node->token == MS_TOKEN_BINDING_TIME ||
+         node->token == MS_TOKEN_BINDING_STRING ||
+         node->token == MS_TOKEN_BINDING_DOUBLE ||
+         node->token == MS_TOKEN_BINDING_INTEGER) {
         bindingToken = node->token;
-      } else if(node->token == MS_TOKEN_COMPARISON_EQ || node->token == MS_TOKEN_COMPARISON_NE ||
+      } else if(node->token == MS_TOKEN_COMPARISON_EQ ||
+         node->token == MS_TOKEN_COMPARISON_IEQ ||
+         node->token == MS_TOKEN_COMPARISON_NE ||
          node->token == MS_TOKEN_COMPARISON_GT || node->token == MS_TOKEN_COMPARISON_GE ||
          node->token == MS_TOKEN_COMPARISON_LT || node->token == MS_TOKEN_COMPARISON_LE ||
          node->token == MS_TOKEN_COMPARISON_IN) {
@@ -4054,6 +4059,7 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
             native_string = msStringConcatenate(native_string, "TRUE");
           else
             native_string = msStringConcatenate(native_string, "FALSE");
+          comparisonToken = -1; bindingToken = -1; /* reset */
           break;
         case MS_TOKEN_LITERAL_NUMBER:
           snippet = (char *) msSmallMalloc(32);
@@ -4065,6 +4071,7 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
               sprintf(snippet, "%.18g", node->tokenval.dblval);
           native_string = msStringConcatenate(native_string, snippet);
           msFree(snippet);
+          comparisonToken = -1; bindingToken = -1; /* reset */
           break;
         case MS_TOKEN_LITERAL_STRING:
 
@@ -4090,7 +4097,10 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
 
             msFreeCharArray(strings, nstrings);
           } else {
-            strtmpl = "'%s'";
+            if( comparisonToken == MS_TOKEN_COMPARISON_IEQ )
+              strtmpl = "lower('%s')";
+            else
+              strtmpl = "'%s'";
             stresc = msPostGISEscapeSQLParam(layer, node->tokenval.strval);
             snippet = (char *) msSmallMalloc(strlen(strtmpl) + strlen(stresc));
             sprintf(snippet, strtmpl, stresc);
@@ -4098,6 +4108,7 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
             msFree(snippet);
             msFree(stresc);
           }
+          comparisonToken = -1; bindingToken = -1; /* reset */
 
           break;
         case MS_TOKEN_LITERAL_TIME: {
@@ -4138,7 +4149,11 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
         case MS_TOKEN_BINDING_DOUBLE:
         case MS_TOKEN_BINDING_INTEGER:
         case MS_TOKEN_BINDING_STRING:
-          if(node->token == MS_TOKEN_BINDING_STRING || node->next->token == MS_TOKEN_COMPARISON_RE || node->next->token == MS_TOKEN_COMPARISON_IRE)
+          if(node->token == MS_TOKEN_BINDING_STRING && node->next &&
+              node->next->token == MS_TOKEN_COMPARISON_IEQ ) {
+              strtmpl = "lower(%s::text)";
+          }
+          else if(node->token == MS_TOKEN_BINDING_STRING || node->next->token == MS_TOKEN_COMPARISON_RE || node->next->token == MS_TOKEN_COMPARISON_IRE)
             strtmpl = "%s::text"; /* explicit cast necessary for certain operators */
           else
             strtmpl = "%s";
@@ -4184,13 +4199,19 @@ int msPostGISLayerTranslateFilter(layerObj *layer, expressionObj *filter, char *
           native_string = msStringConcatenate(native_string, msExpressionTokenToString(node->token));
           break;
 
-	/* unsupported tokens */ 
-	case MS_TOKEN_COMPARISON_IEQ:
+        case MS_TOKEN_COMPARISON_IEQ:
+          if( bindingToken != MS_TOKEN_BINDING_STRING )
+              goto cleanup;
+          /* lowering of attribute and literal name done elsewhere */
+          native_string = msStringConcatenate(native_string, " = ");
+          break;
+
+        /* unsupported tokens */
         case MS_TOKEN_COMPARISON_BEYOND:
-	case MS_TOKEN_FUNCTION_TOSTRING:
-	case MS_TOKEN_FUNCTION_ROUND:
-	case MS_TOKEN_FUNCTION_SIMPLIFY:
-        case MS_TOKEN_FUNCTION_SIMPLIFYPT:        
+        case MS_TOKEN_FUNCTION_TOSTRING:
+        case MS_TOKEN_FUNCTION_ROUND:
+        case MS_TOKEN_FUNCTION_SIMPLIFY:
+        case MS_TOKEN_FUNCTION_SIMPLIFYPT:
         case MS_TOKEN_FUNCTION_GENERALIZE:
           goto cleanup;
           break;
