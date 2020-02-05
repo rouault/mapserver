@@ -13,9 +13,14 @@ curl https://sqlite.org/2020/sqlite-autoconf-3310100.tar.gz > sqlite-autoconf-33
 tar xvzf sqlite-autoconf-3310100.tar.gz
 (cd sqlite-autoconf-3310100 && CFLAGS='-DSQLITE_ENABLE_COLUMN_METADATA -O2' ./configure --prefix=/usr && CCACHE_CPP2=yes make -j2 && sudo make -j3 install && sudo rm -f /usr/lib/x86_64-linux-gnu/libsqlite3* && sudo rm -f /usr/lib/x86_64-linux-gnu/pkgconfig/sqlite3.pc && sudo ldconfig)
 
-curl http://download.osgeo.org/proj/proj-6.3.0.tar.gz > proj-6.3.0.tar.gz
-tar xzf proj-6.3.0.tar.gz
-mv proj-6.3.0 proj
+#curl http://download.osgeo.org/proj/proj-6.3.0.tar.gz > proj-6.3.0.tar.gz
+#tar xzf proj-6.3.0.tar.gz
+#mv proj-6.3.0 proj
+curl -Ls https://github.com/OSGeo/PROJ/archive/6.3.zip > 6.3.zip
+unzip 6.3.zip
+mv PROJ-6.3 proj
+(cd proj && ./autogen.sh)
+
 (cd proj/data && curl http://download.osgeo.org/proj/proj-datumgrid-1.8.tar.gz > proj-datumgrid-1.8.tar.gz && tar xvzf proj-datumgrid-1.8.tar.gz)
 (cd proj; CFLAGS='-O2 -DPROJ_RENAME_SYMBOLS' CXXFLAGS='-O2 -DPROJ_RENAME_SYMBOLS' ./configure --disable-static --prefix=/usr/local && CCACHE_CPP2=yes make -j2 && sudo make -j3 install)
 sudo rm -f /usr/include/proj_api.h
