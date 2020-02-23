@@ -483,7 +483,7 @@ int ParseSqlGeometry(msMSSQL2008LayerInfo* layerinfo, shapeObj *shape)
     ReadPoint(gpi, &shape->line[0].point[0], 0);
     ReadPoint(gpi, &shape->line[0].point[1], 1);
   } else {
-    int iShape, iFigure, iSegment;
+    int iShape, iFigure, iSegment = 0;
     // complex geometries
     gpi->nNumPoints = ReadInt32(6);
 
@@ -1589,7 +1589,7 @@ static int prepare_database(layerObj *layer, rectObj rect, char **query_string)
       layerinfo->itemtypes = msSmallMalloc(sizeof(SQLSMALLINT) * (layer->numitems + 1));
       for (t = 0; t < layer->numitems; t++) {
           char colBuff[256];
-          SQLSMALLINT itemType;
+          SQLSMALLINT itemType = 0;
 
           columnName(layerinfo->conn, t + 1, colBuff, sizeof(colBuff), layer, pass_field_def, &itemType);
           layerinfo->itemtypes[t] = itemType;
@@ -1746,7 +1746,6 @@ static int  force_to_points(char *wkb, shapeObj *shape)
   /* we're going to make a 'line' for each entity (point, line or ring) in the geom collection */
 
   int     offset = 0;
-  int     pt_offset;
   int     ngeoms;
   int     t, u, v;
   int     type, nrings, npoints;
@@ -1789,7 +1788,6 @@ static int  force_to_points(char *wkb, shapeObj *shape)
 
       memcpy(&nrings, &wkb[offset+5],4); /* num rings */
       /* add a line for each polygon ring */
-      pt_offset = 0;
       offset += 9; /* now points at 1st linear ring */
       for(u = 0; u < nrings; u++) {
         /* for each ring, make a line */
@@ -1821,7 +1819,6 @@ static int  force_to_points(char *wkb, shapeObj *shape)
 static int  force_to_lines(char *wkb, shapeObj *shape)
 {
   int     offset = 0;
-  int     pt_offset;
   int     ngeoms;
   int     t, u, v;
   int     type, nrings, npoints;
@@ -1855,7 +1852,6 @@ static int  force_to_lines(char *wkb, shapeObj *shape)
 
       memcpy(&nrings, &wkb[offset + 5], 4); /* num rings */
       /* add a line for each polygon ring */
-      pt_offset = 0;
       offset += 9; /* now points at 1st linear ring */
       for(u = 0; u < nrings; u++) {
         /* for each ring, make a line */
@@ -1884,7 +1880,6 @@ static int  force_to_lines(char *wkb, shapeObj *shape)
 static int  force_to_polygons(char  *wkb, shapeObj *shape)
 {
   int     offset = 0;
-  int     pt_offset;
   int     ngeoms;
   int     t, u, v;
   int     type, nrings, npoints;
@@ -1903,7 +1898,6 @@ static int  force_to_polygons(char  *wkb, shapeObj *shape)
 
       memcpy(&nrings, &wkb[offset + 5], 4); /* num rings */
       /* add a line for each polygon ring */
-      pt_offset = 0;
       offset += 9; /* now points at 1st linear ring */
       for(u=0; u < nrings; u++) {
         /* for each ring, make a line */
@@ -2166,7 +2160,6 @@ static void find_bounds(shapeObj *shape)
 int msMSSQL2008LayerGetShapeRandom(layerObj *layer, shapeObj *shape, long *record)
 {
   msMSSQL2008LayerInfo  *layerinfo;
-  int                 result;
   SQLLEN needLen = 0;
   SQLLEN retLen = 0;
   char dummyBuffer[1];
@@ -2317,20 +2310,20 @@ int msMSSQL2008LayerGetShapeRandom(layerObj *layer, shapeObj *shape, long *recor
 
           switch(layer->type) {
             case MS_LAYER_POINT:
-              result = force_to_points(wkbBuffer, shape);
+              /*result =*/ force_to_points(wkbBuffer, shape);
               break;
 
             case MS_LAYER_LINE:
-              result = force_to_lines(wkbBuffer, shape);
+              /*result =*/ force_to_lines(wkbBuffer, shape);
               break;
 
             case MS_LAYER_POLYGON:
-              result = force_to_polygons(wkbBuffer, shape);
+              /*result =*/ force_to_polygons(wkbBuffer, shape);
               break;
 
             case MS_LAYER_QUERY:
             case MS_LAYER_CHART:
-              result = dont_force(wkbBuffer, shape);
+              /*result =*/ dont_force(wkbBuffer, shape);
               break;
 
             case MS_LAYER_RASTER:
@@ -2704,7 +2697,7 @@ int msMSSQL2008LayerGetItems(layerObj *layer)
 
   for(t = 0; t < cols; t++) {
     char colBuff[256];
-    SQLSMALLINT itemType;
+    SQLSMALLINT itemType = 0;
 
     columnName(layerinfo->conn, t + 1, colBuff, sizeof(colBuff), layer, pass_field_def, &itemType);
 
