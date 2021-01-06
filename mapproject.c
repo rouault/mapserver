@@ -1982,6 +1982,42 @@ int msProjectRect(projectionObj *in, projectionObj *out, rectObj *rect)
         }
       }
   }
+  else if( in && !in->gt.need_geotransform &&
+      out && !out->gt.need_geotransform &&
+      !msProjIsGeographicCRS(in) && !msProjIsGeographicCRS(out) )
+  {
+      pointObj p;
+      p.x = 0.0;
+      p.y = 0.0;
+      reprojectionObj* reprojectorToLongLat = msProjectCreateReprojector(in, NULL);
+      if( reprojectorToLongLat &&
+          msProjectPointEx(reprojectorToLongLat, &p) == MS_SUCCESS &&
+          fabs(p.y - 90) < 1e-8 )
+      {
+        reprojector = msProjectCreateReprojector(in, out);
+        /* Is the pole in the rectangle ? */
+        if( 0 >= rect->minx && 0 >= rect->miny &&
+            0 <= rect->maxx && 0 <= rect->maxy )
+        {
+            if( msProjectRectAsPolygon(reprojector, rect ) == MS_SUCCESS )
+            {
+                msProjectDestroyReprojector(reprojector);
+                msProjectDestroyReprojector(reprojectorToLongLat);
+                return MS_SUCCESS;
+            }
+        }
+        /* Are we sure the dateline is not enclosed ? */
+        else if( rect->maxy < 0 || rect->maxx < 0 || rect->minx > 0 )
+        {
+            ret = msProjectRectAsPolygon(reprojector, rect );
+            msProjectDestroyReprojector(reprojector);
+            msProjectDestroyReprojector(reprojectorToLongLat);
+            return ret;
+        }
+      }
+      msProjectDestroyReprojector(reprojectorToLongLat);
+  }
+
 
   if(in && msProjectHasLonWrap(in, &dfLonWrap) && dfLonWrap == 180.0) {
     inp = in;
