@@ -242,7 +242,7 @@ static hb_position_t _ms_get_glyph_v_advance_func (hb_font_t *font, void *font_d
 }
 #endif
 
-int WARN_UNUSED check_single_font(fontSetObj *fontset, char *fontkey, text_run *run, TextInfo *glyphs, int ignore_missing) {
+static int check_single_font(fontSetObj *fontset, char *fontkey, text_run *run, TextInfo *glyphs, int ignore_missing) {
   int i;
   face_element *fcache = NULL;
   if(fontset && fontkey) {
@@ -256,16 +256,16 @@ int WARN_UNUSED check_single_font(fontSetObj *fontset, char *fontkey, text_run *
   run->face = fcache;
   if(MS_UNLIKELY(!fcache)) return MS_FAILURE;
   for(i=0; i<run->length; i++) {
-    int codepoint = msGetGlyphIndex(fcache, glyphs->unicodes[run->offset+i]);
+    unsigned int codepoint = msGetGlyphIndex(fcache, glyphs->unicodes[run->offset+i]);
     if(codepoint || ignore_missing)
-      glyphs->codepoints[run->offset+i] = codepoint;
+      glyphs->codepoints[run->offset+i] = codepoint ? codepoint : msGetGlyphIndex(fcache, '?');
     else
       return MS_FAILURE;
   }
   return MS_SUCCESS;
 }
 
-int WARN_UNUSED get_face_for_run(fontSetObj *fontset, char *fontlist, text_run *run, TextInfo *glyphs) {
+static int get_face_for_run(fontSetObj *fontset, char *fontlist, text_run *run, TextInfo *glyphs) {
   char *startfont, *endfont;
 #if defined(USE_HARFBUZZ) && defined(USE_FRIBIDI)
   const char *prefix = NULL;
