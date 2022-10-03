@@ -24,6 +24,24 @@ if test -f "$BUILD_SH_FROM_REPO"; then
     fi
 fi
 
+apt-get install -y libsqlite3-dev sqlite3
+apt-get remove -y libproj15 libproj-dev
+
+# Build PROJ dependency (we can't use the packaged one because of incompatibilities
+# between libstdc++ from clang and the libc++ of clang used by ossfuzz
+git clone --depth 1 https://github.com/OSGeo/PROJ proj
+cd proj
+cmake . -DBUILD_SHARED_LIBS:BOOL=OFF \
+      -DENABLE_TIFF:BOOL=OFF \
+      -DENABLE_CURL:BOOL=OFF \
+      -DCMAKE_INSTALL_PREFIX=/usr \
+      -DBUILD_APPS:BOOL=OFF \
+      -DBUILD_TESTING:BOOL=OFF \
+      -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC -stdlib=libc++"
+make -j$(nproc) -s
+make install
+cd ..
+
 #Build gdal dependency
 pushd $SRC/gdal
 mkdir build
@@ -32,8 +50,7 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF \
 -DGDAL_BUILD_OPTIONAL_DRIVERS:BOOL=OFF -DOGR_BUILD_OPTIONAL_DRIVERS:BOOL=OFF \
 -DBUILD_APPS=OFF \
--DCMAKE_C_COMPILER="clang" -DCMAKE_CXX_COMPILER="clang++" \
--DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" ../
+-DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC -stdlib=libc++" ../
 make -j$(nproc) GDAL
 make install
 popd
@@ -44,8 +61,6 @@ cd $SRC/MapServer
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_STATIC=ON \
--DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
--DCMAKE_C_FLAGS="$CFLAGS" -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
 -DWITH_PROTOBUFC=0 -DWITH_FRIBIDI=0 -DWITH_HARFBUZZ=0 -DWITH_CAIRO=0 -DWITH_FCGI=0 \
 -DWITH_GEOS=0 -DWITH_POSTGIS=0 -DWITH_GIF=0 ../
 #While using undefined sanitizer, Project cannot compile binary but can compile library.
@@ -55,10 +70,9 @@ make -j$(nproc) mapserver_static
 for fuzzer in mapfuzzer shapefuzzer; do
     $CC $CFLAGS -Wall -Wextra -I. -I.. -I/usr/include/gdal/. -DPROJ_VERSION_MAJOR=6 -c ../fuzzers/${fuzzer}.c
 
-    $CXX $CFLAGS $LIB_FUZZING_ENGINE ${fuzzer}.o -o ${fuzzer} \
+    $CXX $CXXFLAGS $LIB_FUZZING_ENGINE ${fuzzer}.o -o ${fuzzer} \
         -L. -lmapserver_static -lgdal \
-        -l:libpng.a -l:libjpeg.a -l:libfreetype.a -l:libproj.a -l:libxml2.a -l:libz.a \
-        -l:libicuuc.a -l:libicudata.a -l:libsqlite3.a -l:liblzma.so.5 -lc++
+        -Wl,-Bstatic -lpng -ljpeg -lfreetype -lproj -lxml2 -lz -licuuc -licudata -lsqlite3
 
     cp ${fuzzer} $OUT/
 done
