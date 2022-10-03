@@ -24,8 +24,17 @@ if test -f "$BUILD_SH_FROM_REPO"; then
     fi
 fi
 
-apt-get install -y libsqlite3-dev sqlite3
-apt-get remove -y libproj15 libproj-dev
+apt-get install -y libsqlite3-dev liblzma-dev sqlite3
+apt-get remove -y libproj15 libproj-dev libxml2-dev libxml2
+
+# Build libxml2 from source (packaged one depends on libicu which is C++)
+wget https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.10.2/libxml2-v2.10.2.tar.gz
+tar xvzf libxml2-v2.10.2.tar.gz
+cd libxml2-v2.10.2
+cmake . -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC"
+make -j$(nproc) -s
+make install
+cd ..
 
 # Build PROJ dependency (we can't use the packaged one because of incompatibilities
 # between libstdc++ from clang and the libc++ of clang used by ossfuzz
@@ -36,8 +45,7 @@ cmake . -DBUILD_SHARED_LIBS:BOOL=OFF \
       -DENABLE_CURL:BOOL=OFF \
       -DCMAKE_INSTALL_PREFIX=/usr \
       -DBUILD_APPS:BOOL=OFF \
-      -DBUILD_TESTING:BOOL=OFF \
-      -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC -stdlib=libc++"
+      -DBUILD_TESTING:BOOL=OFF
 make -j$(nproc) -s
 make install
 cd ..
@@ -46,11 +54,10 @@ cd ..
 pushd $SRC/gdal
 mkdir build
 cd build
-#While Compiling the dependency, I do not want sanitizers or the fuzzing tags in the dependency library.
 cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF \
 -DGDAL_BUILD_OPTIONAL_DRIVERS:BOOL=OFF -DOGR_BUILD_OPTIONAL_DRIVERS:BOOL=OFF \
 -DBUILD_APPS=OFF \
--DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC -stdlib=libc++" ../
+-DCMAKE_EXE_LINKER_FLAGS="-pthread" ../
 make -j$(nproc) GDAL
 make install
 popd
@@ -72,7 +79,8 @@ for fuzzer in mapfuzzer shapefuzzer; do
 
     $CXX $CXXFLAGS $LIB_FUZZING_ENGINE ${fuzzer}.o -o ${fuzzer} \
         -L. -lmapserver_static -lgdal \
-        -Wl,-Bstatic -lpng -ljpeg -lfreetype -lproj -lxml2 -lz -licuuc -licudata -lsqlite3
+        -Wl,-Bstatic -lpng -ljpeg -lfreetype -lproj -lxml2 -lz -lsqlite3 -llzma \
+        -Wl,-Bdynamic  -lpthread -ldl -lc++
 
     cp ${fuzzer} $OUT/
 done
