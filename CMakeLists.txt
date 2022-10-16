@@ -379,6 +379,9 @@ endif(BUILD_STATIC)
 #non-opaque data-structures.
 
 if( NOT FUZZER )
+add_executable(tostring tostring.c)
+target_link_libraries(tostring ${MAPSERVER_LIBMAPSERVER})
+
 add_executable(mapserv mapserv.c)
 target_link_libraries(mapserv ${MAPSERVER_LIBMAPSERVER})
 add_executable(map2img map2img.c)
