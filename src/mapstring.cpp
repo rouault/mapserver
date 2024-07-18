@@ -1548,6 +1548,63 @@ char *msCommifyString(char *str) {
   return str;
 }
 
+/************************************************************************/
+/*                              msToString()                            */
+/************************************************************************/
+
+char *msToString(const char *format, double value) {
+  bool pctAlreadyFound = false;
+  // Validate that the formatting string is OK for a single input double value
+  int width = 308; // maximum double value is of the order of ~1e308
+  for (const char *ptr = format; *ptr; ++ptr) {
+    if (*ptr == '%' && ptr[1] == '%') {
+      ++ptr;
+    } else if (*ptr == '%') {
+      if (pctAlreadyFound) {
+        msSetError(MS_MISCERR, "More than one conversion specifier",
+                   "msToString()");
+        return nullptr;
+      }
+      pctAlreadyFound = true;
+      ++ptr;
+      // Skip flag characters
+      while (*ptr == '+' || *ptr == '-' || *ptr == ' ' || *ptr == '\'' ||
+             *ptr == '0') {
+        ++ptr;
+      }
+      // Skip width
+      if (*ptr >= '1' && *ptr <= '9') {
+        width = atoi(ptr);
+        do {
+          ++ptr;
+        } while (*ptr >= '0' && *ptr <= '9');
+        if (width > 1024) {
+          // To avoid arbitrary memory allocatin
+          msSetError(MS_MISCERR, "Too large width", "msToString()");
+          return nullptr;
+        }
+      }
+      // Skip precision
+      if (*ptr == '.') {
+        ++ptr;
+        while (*ptr >= '0' && *ptr <= '9')
+          ++ptr;
+      }
+      // Check conversion specifier
+      if (!(*ptr == 'e' || *ptr == 'E' || *ptr == 'f' || *ptr == 'F' ||
+            *ptr == 'g' || *ptr == 'G')) {
+        msSetError(MS_MISCERR, "Invalid conversion specifier", "msToString()");
+        return nullptr;
+      }
+    }
+  }
+  // width / 3 if thousands' grouping characters is used
+  const size_t nBufferSize = strlen(format) + width + (width / 3) + 1;
+  char *ret = static_cast<char *>(msSmallMalloc(nBufferSize));
+  snprintf(ret, nBufferSize, format, value);
+  return ret;
+}
+
 /* -------------------------------------------------------------------------------
  */
 /*       Replace all occurrences of old with new in str. */
